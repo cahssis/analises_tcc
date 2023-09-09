@@ -1,0 +1,4366 @@
+---
+title: "Avanço TCC"
+author: "Caroline Assis de Oliveira, 20180011385"
+date: "`r format(Sys.time(), '%d de %B de %Y')`"
+output: 
+  html_document:
+    number_section: yes
+    toc: yes
+---
+
+# Bibliotecas:
+```{r, message=F, warning=F}
+library(data.table)
+library(lubridate)
+library(dplyr)
+library(rio)
+library(survival)
+library(muhaz)
+library(flexsurv)
+library(ranger)
+library(ggplot2)
+library(ggfortify)
+library(tidycmprsk)
+library(ggsurvfit)
+```
+
+
+# Organização da Base
+
+Todo o processamento foi feito no script `processamento.R`.
+
+```{r, message=F, warning=F}
+setwd("~/Suicidio no Brasil-20230703T132807Z-001/Suicidio no Brasil")
+base = import('./base_obito_ajustada.xlsx')
+
+attach(base)
+```
+
+
+# Estudos Não-Paramétricos
+
+## Curva de Sobrevivência com Intervalo de Confiança Simétrico
+
+```{r, message=F, warning=F}
+ekm = survfit(Surv(IDADEanos,censura_suicidio)~1, data = base)
+summary(ekm)
+
+autoplot(ekm) +
+  labs(x = "Tempo (anos)",
+       y = "S(t) estimada")
+```
+
+
+## Curva de Sobrevivência com Intervalo de Confiança Assimétrico
+```{r}
+ekmA=survfit(Surv(IDADEanos,censura_suicidio)~1, conf.type="log-log", data = base)
+summary(ekmA)
+
+autoplot(ekmA) +
+  labs(x = "Tempo (anos)",
+       y = "S(t) estimada")
+```
+
+## Curvas de Sobrevivência Estratificadas
+
+## Sexo
+```{r, message=F, warning=F}
+ekm_sexo = survfit(Surv(IDADEanos,censura_suicidio)~SEXO, data = base)
+summary(ekm_sexo)
+
+sex = autoplot(ekm_sexo) +
+  labs(title = "Sexo",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+```
+
+
+## Assistência Médica
+```{r, message=F, warning=F}
+ekm_assistmed = survfit(Surv(IDADEanos,censura_suicidio)~ASSISTMED)
+summary(ekm_assistmed)
+# plot(ekm_assistmed, col=c(2, 1), xlab="Tempo (anos)",ylab="S(t) estimada")
+# legend(1,0.5,col=c(2, 1),c("Não","Sim"),lwd=1, bty="n")
+
+am = autoplot(ekm_assistmed) +
+  labs(title = "Assistencia Médica",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+```
+
+## Região do País
+```{r, message=F, warning=F}
+ekm_reg = survfit(Surv(IDADEanos,censura_suicidio)~regiao, 
+                  data = base)
+summary(ekm_reg)
+
+r = autoplot(ekm_reg) +
+  labs(title = "Região",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+r
+```
+
+## Flag SP
+```{r, message=F, warning=F}
+ekm_sp = survfit(Surv(IDADEanos,censura_suicidio)~flag_sp)
+summary(ekm_sp)
+
+sp = autoplot(ekm_sp) +
+  labs(title = "Flag SP",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+sp
+```
+
+
+## Flag PB
+```{r, message=F, warning=F}
+ekm_pb = survfit(Surv(IDADEanos,censura_suicidio)~flag_pb)
+summary(ekm_pb)
+
+pb = autoplot(ekm_pb) +
+  labs(title = "Flag PB",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+pb
+```
+
+## Faixa Etária
+```{r, message=F, warning=F}
+ekm_fxetaria = survfit(Surv(IDADEanos,censura_suicidio)~faixa_etaria)
+summary(ekm_fxetaria)
+
+fxetaria = autoplot(ekm_fxetaria) +
+  labs(title = "Faixa Etária",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+fxetaria
+```
+
+## Ano do Óbito
+```{r, message=F, warning=F}
+ekm_ano = survfit(Surv(IDADEanos,censura_suicidio)~ano)
+summary(ekm_ano)
+
+a = autoplot(ekm_ano) +
+  labs(title = "Ano",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+a
+```
+
+## Estado Civil
+```{r, message=F, warning=F}
+ekm_estciv = survfit(Surv(IDADEanos, censura_suicidio)~ESTCIV)
+summary(ekm_estciv)
+
+ec = autoplot(ekm_estciv) +
+  labs(title = "Estado Civil",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+ec
+```
+
+## Local do Óbito
+```{r, message=F, warning=F}
+ekm_local = survfit(Surv(IDADEanos, censura_suicidio)~LOCOCOR)
+summary(ekm_local)
+
+loc = autoplot(ekm_local) +
+  labs(title = "Local da Ocorrência",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+loc
+```
+
+## Raça/Cor
+```{r, message=F, warning=F}
+ekm_cor = survfit(Surv(IDADEanos, censura_suicidio)~RACACOR)
+summary(ekm_cor)
+
+cor = autoplot(ekm_cor) +
+  labs(title = "Raça/Cor",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+cor
+```
+
+
+## Trimestre
+```{r, message=F, warning=F}
+ekm_tri = survfit(Surv(IDADEanos, censura_suicidio)~tri)
+summary(ekm_tri)
+
+t = autoplot(ekm_tri) +
+  labs(title = "Trimestre",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+t
+```
+
+## Flag Aposentado
+```{r, message=F, warning=F}
+ekm_aposentado = survfit(Surv(IDADEanos, censura_suicidio)~flag_aposentado)
+summary(ekm_aposentado)
+
+ap = autoplot(ekm_aposentado) +
+  labs(title = "Flag Aposentado",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+ap
+```
+
+## Flag Estudante
+```{r, message=F, warning=F}
+ekm_estudante = survfit(Surv(IDADEanos, censura_suicidio)~flag_estudante)
+summary(ekm_estudante)
+
+estudante = autoplot(ekm_estudante) +
+  labs(title = "Flag Estudante",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+estudante
+```
+
+## Flag Escolaridade
+```{r, message=F, warning=F}
+ekm_escolaridade = survfit(Surv(IDADEanos, censura_suicidio)~ESC2010)
+summary(ekm_escolaridade)
+
+es = autoplot(ekm_escolaridade) +
+  labs(title = "Flag Escolaridade",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+es
+```
+
+## Flag Necrópsia
+```{r, message=F, warning=F}
+ekm_necro = survfit(Surv(IDADEanos, censura_suicidio)~NECROPSIA)
+summary(ekm_necro)
+
+necro = autoplot(ekm_necro) +
+  labs(title = "Necrópsia",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+necro 
+```
+
+## Fonte
+```{r, message=F, warning=F}
+ekm_fonte = survfit(Surv(IDADEanos, censura_suicidio)~FONTE)
+summary(ekm_fonte)
+
+fonte = autoplot(ekm_fonte) +
+  labs(title = "Fonte",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+fonte 
+```
+
+## Flag Residência vs Ocorrência da Morte
+```{r, message=F, warning=F}
+ekm_morteoco = survfit(Surv(IDADEanos, censura_suicidio)~morteoco)
+summary(ekm_morteoco)
+
+moco = autoplot(ekm_morteoco) +
+  labs(title = "Flag Ocorrência da Morte vs Residência",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+moco 
+```
+
+## Flag Residência vs Naturalidade
+```{r, message=F, warning=F}
+ekm_mortenatu = survfit(Surv(IDADEanos, censura_suicidio)~mortenatu)
+summary(ekm_mortenatu)
+
+mnatu = autoplot(ekm_mortenatu) +
+  labs(title = "Flag Ocorrência da Morte vs Naturalidade",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+mnatu
+```
+
+## Flag Pandemia
+```{r, message=F, warning=F}
+ekm_pandemia = survfit(Surv(IDADEanos, censura_suicidio)~pandemia)
+summary(ekm_pandemia)
+
+pan = autoplot(ekm_pandemia) +
+  labs(title = "Flag Pandemia",
+       x = "Tempo (anos)", y = "S(t) estimada") +
+  theme_bw()
+pan
+```
+
+# Estimativa de Mediana
+```{r, message=F, warning=F}
+ekm
+ekm_ano
+ekm_aposentado
+ekm_assistmed
+ekm_cor
+ekm_escolaridade
+ekm_estciv
+ekm_estudante
+ekm_fonte
+ekm_fxetaria
+ekm_local
+ekm_mortenatu
+ekm_morteoco
+ekm_necro
+ekm_pandemia
+ekm_pb
+ekm_reg
+ekm_sexo
+ekm_sp
+ekm_tri
+```
+
+# Estimativa de Tempo Médio
+```{r, message=F, warning=F}
+t= IDADEanos[censura_suicidio==1]
+tj=c(0,as.numeric(levels(as.factor(t))))
+surv=c(1,as.numeric(levels(as.factor(ekm$surv))))
+surv=sort(surv, decreasing=T)
+k=length(tj)-1
+prod=matrix(0,k,1)
+for(j in 1:k){
+  prod[j]=(tj[j+1]-tj[j])*surv[j]
+}
+tm=sum(prod)
+tm
+```
+
+# Estimação da Função de Risco
+```{r, message=F, warning=F}
+risco= pehaz(IDADEanos,censura_suicidio)
+objects(risco)
+risco$Hazard
+plot(risco)
+```
+
+# Comparação das Curvas de Sobrevivência
+
+## Ano do Óbito
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~ano,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~ano,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entra os anos.
+
+## Sexo
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~SEXO,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~SEXO,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entra os sexos.
+
+## Raça/Cor
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~RACACOR,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~RACACOR,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entra as raças/cor.
+
+## Estado Civil
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~ESTCIV,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~ESTCIV,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entra os estados civis.
+
+## Local de Ocorrência
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~LOCOCOR,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~LOCOCOR,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entra os locais de ocorrência do óbito.
+
+## Assistência Médica
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~ASSISTMED,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~ASSISTMED,rho=1)
+```
+
+p-valores > 0,05, não rejeitamos a hipótese nula, logo não existe diferença significativa entre ter tido ou não assistência médica.
+
+
+## Região
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~regiao,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~regiao,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entre as regiões do Brasil.
+
+
+## Flag Estudante
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~flag_estudante,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~flag_estudante,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entre ser ou não estudante.
+
+## Flag SP
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~flag_sp,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~flag_sp,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entre ser ou não do Estado de São Paulo.
+
+## Flag PB
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~flag_pb,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~flag_pb,rho=1)
+```
+
+p-valores > 0,05, não rejeitamos a hipótese nula, logo não existe diferença significativa entre ser ou não do Estado da Paraíba.
+
+## Flag Aposentado
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~flag_aposentado,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~flag_aposentado,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entre ser ou não aposentado.
+
+
+## Trimestre
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~tri,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~tri,rho=1)
+```
+
+Um maior e outro menor, como interpretar?
+
+
+## Faixa Etária
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~faixa_etaria,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~faixa_etaria,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entre as faixas etárias.
+
+## Escolaridade
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~ESC2010,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~ESC2010,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entre ser os níveis de escolaridade
+
+## Faixa Necrópsia
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~NECROPSIA,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~NECROPSIA,rho=1)
+```
+
+Um maior outro menor, como interpretar?
+
+## Fonte
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~FONTE,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~FONTE,rho=1)
+```
+
+Um maior outro menor, como interpretar?
+
+## Residencia vs Ocorrência
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~morteoco,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~morteoco,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entre a ocorrência da morte ser no mesmo municipio de residencia.
+
+## Residencia vs Naturalidade
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~mortenatu,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~mortenatu,rho=1)
+```
+
+p-valores < 0,05, rejeitamos a hipótese nula, logo existe diferença significativa entre a ocorrência da morte ser no mesmo municipio de naturalidade.
+
+## Pandemia
+```{r, message=F, warning=F}
+survdiff(Surv(IDADEanos,censura_suicidio)~pandemia,rho=0)
+survdiff(Surv(IDADEanos,censura_suicidio)~pandemia,rho=1)
+```
+
+Um maior outro menor, como interpretar?
+
+# Ajustes Paramétricos
+
+## Exponencial
+
+Ajuste do ajustew:
+
+```{r, message=F, warning=F}
+ajust1=survreg(Surv(IDADEanos,censura_suicidio)~1,dist='exponential')
+ajust1
+```
+
+Estimação do parâmetro:
+
+```{r, message=F, warning=F}
+lambda=exp(ajust1$coefficients[1])
+lambdae=1/lambda
+lambdae
+```
+
+Tempo médio:
+
+```{r, message=F, warning=F}
+tme=1/lambdae
+tme
+```
+
+Percentil (aqui usando Mediana):
+
+```{r, message=F, warning=F}
+p = 0.5
+tpe=(-log(1-p))/lambdae
+tpe
+```
+
+## Weibull
+
+Ajuste do ajustew:
+
+```{r, message=F, warning=F}
+ajust2=survreg(Surv(IDADEanos,censura_suicidio)~1,dist='weibull')
+ajust2
+```
+
+Estimação dos parâmetros:
+
+```{r, message=F, warning=F}
+lambda1=exp(ajust2$coefficients[1])
+lambdaw=1/lambda1
+gama=1/ajust2$scale
+cbind(gama, lambdaw)
+```
+
+Tempo médio:
+
+```{r, message=F, warning=F}
+tmw=(gamma(1+(1/gama)))/lambdaw
+tmw
+```
+
+Percentil (aqui usando Mediana):
+
+```{r, message=F, warning=F}
+p = 0.5
+tpw=(-log(1-p))^(1/gama)/lambdaw
+tpw
+```
+
+## Lognormal
+
+Ajuste do ajustew:
+
+```{r, message=F, warning=F}
+ajust3=survreg(Surv(IDADEanos,censura_suicidio)~1,dist='lognorm')
+ajust3
+```
+
+Estimação do parâmetro:
+
+```{r, message=F, warning=F}
+mu= ajust3$coefficients
+sigma= ajust3$scale
+cbind(mu,sigma)
+```
+
+Tempo médio:
+
+```{r, message=F, warning=F}
+tml=exp(mu+sigma^2/2)
+tml
+```
+
+Percentil (aqui usando Mediana):
+
+```{r, message=F, warning=F}
+p = 0.5
+zp=qnorm(1-p)
+tpl=exp(zp*sigma+mu)
+tpl
+```
+
+## Comparação das distribuições
+
+Obtendo as estimativas das funções de sobrevivência para as técnicas utilizadas:
+
+```{r, message=F, warning=F}
+ekm=survfit(Surv(IDADEanos,censura_suicidio)~1)
+time=ekm$time
+st=ekm$surv
+ste= exp(-time*lambdae) 
+stw= exp(-(time*lambdaw)^gama)
+stln= pnorm((-log(time)+ mu)/sigma)
+```
+
+```{r, echo=FALSE, message=F, warning=F}
+dados = cbind(time,st,ste,stw,stln) %>% data.frame()
+knitr::kable(dados, col.names = c("Tempos", "S(t) Kaplan-Meier", "S(t) Exponencial",
+                                  "S(t) Weibull", "S(t) Lognormal"))
+```
+
+Métodos gráficos para escolha da melhor distribuição:
+
+- Método gráfico 1:
+
+```{r, echo=FALSE, message=F, warning=F}
+par(mfrow=c(1,3))
+plot(ste,st,pch=16,ylim=range(c(0.0,1)), xlim=range(c(0,1)), ylab = "S(t): Kaplan-Meier",
+xlab="S(t): exponencial")
+lines(c(0,1), c(0,1), type="l", lty=1)
+plot(stw,st,pch=16,ylim=range(c(0.0,1)), xlim=range(c(0,1)), ylab = "S(t): Kaplan-Meier",
+xlab="S(t): Weibull")
+lines(c(0,1), c(0,1), type="l", lty=1)
+plot(stln,st,pch=16,ylim=range(c(0.0,1)), xlim=range(c(0,1)), ylab = "S(t): Kaplan-Meier",
+xlab="S(t): log-normal")
+lines(c(0,1), c(0,1), type="l", lty=1)
+
+par(mfrow=c(1,3))
+plot(ekm, conf.int=F, xlab="Tempos", ylab="S(t)")
+lines(c(0,time),c(1,ste), lty=2)
+legend(25,0.8,lty=c(1,2),c("Kaplan-Meier", "Exponencial"),bty="n",cex=0.8)
+plot(ekm, conf.int=F, xlab="Tempos", ylab="S(t)")
+lines(c(0,time),c(1,stw), lty=2)
+legend(25,0.8,lty=c(1,2),c("Kaplan-Meier", "Weibull"),bty="n",cex=0.8)
+plot(ekm, conf.int=F, xlab="Tempos", ylab="S(t)")
+lines(c(0,time),c(1,stln), lty=2)
+legend(25,0.8,lty=c(1,2),c("Kaplan-Meier", "Log-normal"),bty="n",cex=0.8)
+```
+
+Pela análise deste metódo gráfico, temos que a distribuição **Weibull** é a que melhor os dados se adaptam.
+
+- Método Gráfico 2:
+
+Para a aplicação deste método é necessário fazer a linearização das funções de sobrevivência:
+
+```{r, message=F, warning=F}
+lste=-log(st)
+lstw=log(-log(st))
+lstln=qnorm(st)
+```
+
+Como o ultimo tempo do nosso banco é censura, ou seja `censura_suicidio = 0`, não é possível aplicar o método gráfico 2. Usaremos a distribuição Weibull como indicado pelo método anterior. 
+
+Teste da Razão de Verossimilhanças:
+
+```{r, message=F, warning=F}
+fitgg = flexsurvreg(formula = Surv(IDADEanos, censura_suicidio) ~ 1,dist="gengamma")
+fitw = flexsurvreg(formula = Surv(IDADEanos, censura_suicidio) ~ 1, dist="weibull")
+fite = flexsurvreg(formula = Surv(IDADEanos, censura_suicidio) ~ 1, dist="exp")
+fitl = flexsurvreg(formula = Surv(IDADEanos, censura_suicidio) ~ 1, dist="lnorm")
+
+loglikm1=fite$loglik[1]  #log-verossimilhança ajustew exponencial	
+loglikm2=fitw$loglik[1]  #log-verossimilhança ajustew weibull
+loglikm3=fitl$loglik[1]  #log-verossimilhança ajustew lognormal
+loglikG=fitgg$loglik[1]  #log-verossimilhança ajustew generalizado 
+
+RVe=2*(loglikG-loglikm1) #Estatística da razão de verossimilhanças para o ajustew exponencial
+RVw=2*(loglikG-loglikm2) #Estatística da razão de verossimilhanças para o ajustew weibull
+RVln=2*(loglikG-loglikm3)#Estatística da razão de verossimilhanças para o ajustew lognormal
+
+pRV1=1-pchisq(RVe,2) #Exponencial
+pRV2=1-pchisq(RVw,1) #Weibull
+pRV3=1-pchisq(RVln,1) #Lognormal
+```
+
+```{r, echo=FALSE, message=F, warning=F}
+dados = cbind(pRV1, pRV2, pRV3) %>% data.frame()
+knitr::kable(dados, col.names = c("p-valor Exponencial", "p-valor Weibull", "p-valor Lognormal"))
+```
+
+p-valores iguais a 0 podem ser explicados pelo alto volume de dados.
+
+# Ajuste do Modelo de Regressão
+
+```{r, message=F, warning=F}
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base)
+
+summary(ajustew) 
+```
+
+## Seleção das variáveis pelo p-valor:
+
+```{r, message=F, warning=F}
+base_w = copy(base) 
+
+base_w$tri[base_w$tri=="4º Tri"] = "1º Tri"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$ano[base_w$ano=="2020"] = "2014"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$ano[base_w$ano=="2021"] = "2014"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$regiao[base_w$regiao=="Sudeste"] = "Centro-Oeste"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$FONTE[base_w$FONTE=="Outro"] = "Boletim de Ocorrência"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$tri[base_w$tri=="3º Tri"] = "1º Tri"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$regiao[base_w$regiao=="Sul"] = "Centro-Oeste"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$LOCOCOR[base_w$LOCOCOR=="Via pública"] = "Aldeia Indígena"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$LOCOCOR[base_w$LOCOCOR=="Outros"] = "Aldeia Indígena"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$LOCOCOR[base_w$LOCOCOR=="Outro estabelecimento de saúde"] = "Aldeia Indígena"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$ESTCIV[base_w$ESTCIV=="Separado judicialmente"] = "Casado"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$ano[base_w$ano=="2018"] = "2014"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$ano[base_w$ano=="2016"] = "2014"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$ano[base_w$ano=="2015"] = "2014"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$ano[base_w$ano=="2019"] = "2014"
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+```{r, message=F, warning=F}
+base_w$LOCOCOR[base_w$LOCOCOR=="Hospital"] = "Aldeia Indígena"
+
+
+ajustew = survreg(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+                  dist = 'weibull', data = base_w)
+
+summary(ajustew)
+```
+
+Chegando assim no ajustew final, ficando com 13 variáveis.
+
+## Análise de Resíduos
+
+### Cox - Snell
+
+```{r, message=F, warning=F}
+dummies = base_w %>% 
+  mutate(sexo = ifelse(SEXO == "Masculino", 1, 0),
+         racacor_b = ifelse(RACACOR == "Branca", 1, 0),
+         racacor_pa = ifelse(RACACOR == "Parda", 1, 0),
+         racacor_p = ifelse(RACACOR == 'Preta', 1, 0),
+         racacor_i = ifelse(RACACOR == 'Indígena', 1, 0),
+         estciv_s = ifelse(ESTCIV == 'Solteiro', 1, 0),
+         estciv_uc = ifelse(ESTCIV == 'União consensual', 1, 0),
+         estciv_v = ifelse(ESTCIV == 'Viúvo', 1, 0),
+         lococor = ifelse(LOCOCOR == 'Domicílio', 1, 0),
+         esc1 = ifelse(ESC2010 == '1', 1, 0),
+         esc2 = ifelse(ESC2010 == '2', 1, 0),
+         esc3 = ifelse(ESC2010 == '3', 1, 0),
+         esc4 = ifelse(ESC2010 == '4', 1, 0),
+         esc5 = ifelse(ESC2010 == '5', 1, 0),
+         esc9 = ifelse(ESC2010 == '9', 1, 0),
+         fonte_f = ifelse(FONTE == 'Família', 1, 0),
+         fonte_h = ifelse(FONTE == 'Hospital', 1, 0),
+         regiao_nd = ifelse(regiao == 'Nordeste', 1, 0),
+         regiao_nt = ifelse(regiao == 'Norte', 1, 0),
+         fx_20a39 = ifelse(faixa_etaria == '20 a 39 anos', 1, 0),
+         fx_40a59 = ifelse(faixa_etaria == '40 a 59 anos', 1, 0),
+         fx_05a14 = ifelse(faixa_etaria == '5 a 14 anos', 1, 0),
+         fx_60 = ifelse(faixa_etaria == '60 anos ou mais', 1, 0)) %>% 
+  select(sexo, racacor_b, racacor_i, racacor_pa, racacor_p, estciv_s, estciv_uc,
+         estciv_v, lococor, esc1, esc2, esc3, esc4, esc5, esc9, fonte_f, fonte_h,
+         mortenatu, regiao_nd, regiao_nt, flag_aposentado, flag_estudante,
+         fx_20a39, fx_40a59, fx_05a14, fx_60, pandemia)
+
+
+coefs = ajustew$coefficients
+  
+xb <- coefs[1] + 
+  coefs[2] * dummies$sexo + 
+  coefs[3] * dummies$racacor_b + 
+  coefs[4] * dummies$racacor_i + 
+  coefs[5] * dummies$racacor_pa + 
+  coefs[6] * dummies$racacor_p +
+  coefs[7] * dummies$estciv_s + 
+  coefs[8] * dummies$estciv_uc +
+  coefs[9] * dummies$estciv_v +
+  coefs[10] * dummies$lococor +
+  coefs[11] * dummies$esc1 +
+  coefs[12] * dummies$esc2 +
+  coefs[13] * dummies$esc3 +
+  coefs[14] * dummies$esc4 +
+  coefs[15] * dummies$esc5 +
+  coefs[16] * dummies$esc9 +
+  coefs[17] * dummies$fonte_f +
+  coefs[18] * dummies$fonte_h +
+  coefs[19] * dummies$mortenatu +
+  coefs[20] * dummies$regiao_nd +
+  coefs[21] * dummies$regiao_nt +
+  coefs[22] * dummies$flag_aposentado +
+  coefs[23] * dummies$flag_estudante +
+  coefs[24] * dummies$fx_20a39 +
+  coefs[25] * dummies$fx_40a59 +
+  coefs[26] * dummies$fx_05a14 +
+  coefs[27] * dummies$fx_60 +
+  coefs[28] * dummies$pandemia
+      
+ei<-(IDADEanos*exp(-xb))^gama
+ekm<-survfit(Surv(ei,censura_suicidio)~1)
+t<-ekm$time # são os resíduos
+st<-ekm$surv
+sexp<-exp(-t)
+
+par(mfrow=c(1,2))
+plot(st,sexp,xlab="S(ei): Kaplan-Meier", ylab= "S(ei):Exponencial(1)",pch=16)
+abline(lm(sexp ~ st))
+plot(ekm, conf.int=F,xlab="residuos de Cox Snell",ylab="S(t) estimada")
+lines(t,sexp,lty=3)
+legend("bottomleft",lty=c(1,3),c("Kaplan-Meier","Exponencial(1)"),
+       lwd=1, bty="n", cex=0.8)
+```
+
+### Deviance
+
+```{r, message=F, warning=F}
+resid.deviance<-residuals(ajustew,type="deviance")
+index<-1:length(IDADEanos)
+par(mfrow = c(1,1))
+plot(resid.deviance~index)
+```
+
+### Padronizado
+
+```{r, message=F, warning=F}
+swei = 1-(exp(-exp(-((t-lambdaw)/gama))))
+
+par(mfrow=c(1,2))
+plot(st,swei,xlab="S(nui): Kaplan-Meier", ylab= "S(nui): Gumbel(1.78)",pch=16)
+abline(lm(swei ~ st))
+plot(ekm, conf.int=F,xlab="Residuos Padronizado",ylab="Sobrevivência estimada")
+lines(t,swei,lty=2)
+```
+
+Analisando as avaliações do modelo, essa abordagem não se adequa ao banco de dados.
+
+# Ajuste do Modelo de Cox
+
+```{r, message=F, warning=F}
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), data = base)
+                  
+summary(ajustecox)
+```
+
+## Seleção de Variáveis
+
+```{r, message=F, warning=F}
+base_cox = copy(base)
+base_cox$faixa_etaria[base_cox$faixa_etaria=="5 a 14 anos"] = "15 a 19 anos"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$faixa_etaria[base_cox$faixa_etaria=="60 anos ou mais"] = "15 a 19 anos"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$tri[base_cox$tri=="3º Tri"] = "1º Tri"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$FONTE[base_cox$FONTE=="Hospital"] = "Boletim de Ocorrência"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$tri[base_cox$tri=="2º Tri"] = "1º Tri"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$ESTCIV[base_cox$ESTCIV=="Separado judicialmente"] = "Casado"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$ano[base_cox$ano=="2015"] = "2014"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$ano[base_cox$ano=="2019"] = "2014"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$ano[base_cox$ano=="2017"] = "2014"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$ano[base_cox$ano=="2018"] = "2014"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$ano[base_cox$ano=="2016"] = "2014"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$FONTE[base_cox$FONTE=="Outro"] = "Boletim de Ocorrência"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$LOCOCOR[base_cox$LOCOCOR=="Outros"] = "Aldeia Indígena"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$LOCOCOR[base_cox$LOCOCOR=="Outro estabelecimento de saúde"] = "Aldeia Indígena"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+```{r, message=F, warning=F}
+base_cox$LOCOCOR[base_cox$LOCOCOR=="Via pública"] = "Aldeia Indígena"
+
+ajustecox = coxph(Surv(IDADEanos, censura_suicidio)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(faixa_etaria), data = base_cox)
+                  
+summary(ajustecox)
+```
+
+Chegando assim no ajustew final, ficando com 13 variáveis.
+
+
+
+<!-- ## Analise Grafica para verificar proporcionalidade dos riscos -->
+
+<!-- ### Teste -->
+
+<!-- Não funcionou muito bem, estudar um pouco sobre como separar para apresentar menos variáveis por quadro. Tentar usar esse para substituir tópico a seguir. -->
+
+<!-- ```{r} -->
+<!-- teste = aareg(Surv(IDADEanos, censura_suicidio)~  -->
+<!--                     factor(SEXO) + -->
+<!--                     factor(RACACOR) + -->
+<!--                     factor(ESTCIV) + -->
+<!--                     factor(LOCOCOR) +  -->
+<!--                     factor(ESC2010) + -->
+<!--                     factor(FONTE) + -->
+<!--                     factor(morteoco) + -->
+<!--                     factor(mortenatu) + -->
+<!--                     factor(regiao) + -->
+<!--                     factor(ano) + -->
+<!--                     factor(flag_aposentado) + -->
+<!--                     factor(flag_estudante) + -->
+<!--                     factor(faixa_etaria), data = base_cox) -->
+
+<!-- autoplot(teste) -->
+<!-- ``` -->
+
+<!-- ### Grafico log-Risco acumulado -->
+
+<!-- ```{r, message=F, warning=F} -->
+
+<!-- par(mfrow = c(2,2)) -->
+<!-- # Ano -->
+
+<!-- fitano2014<-coxph(Surv(IDADEanos[ano == 2014], -->
+<!--                        censura_suicidio[ano == 2014])~1, x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitano2014) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0fitano2014<- -log(s0) -->
+<!-- plot(ss$time,log(H0fitano2014), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitano2015<-coxph(Surv(IDADEanos[ano == 2015], -->
+<!--                        censura_suicidio[ano == 2015]) ~ 1, x = T, -->
+<!--                      method="breslow") -->
+<!-- ss<- survfit(fitano2015) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0ano2015<- -log(s0) -->
+<!-- lines(ss$time,log(H0ano2015),type="s",col=2) -->
+
+<!-- fitano2016<-coxph(Surv(IDADEanos[ano == 2016], -->
+<!--                        censura_suicidio[ano == 2016]) ~ 1, x = T, -->
+<!--                      method="breslow") -->
+<!-- ss<- survfit(fitano2016) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0ano2016<- -log(s0) -->
+<!-- lines(ss$time,log(H0ano2016),type="s",col=3) -->
+
+<!-- fitano2017<-coxph(Surv(IDADEanos[ano == 2017], -->
+<!--                        censura_suicidio[ano == 2017]) ~ 1, x = T, -->
+<!--                      method="breslow") -->
+<!-- ss<- survfit(fitano2017) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0ano2017<- -log(s0) -->
+<!-- lines(ss$time,log(H0ano2017),type="s",col=4) -->
+
+<!-- fitano2018<-coxph(Surv(IDADEanos[ano == 2018], -->
+<!--                        censura_suicidio[ano == 2018]) ~ 1, x = T, -->
+<!--                      method="breslow") -->
+<!-- ss<- survfit(fitano2018) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0ano2018<- -log(s0) -->
+<!-- lines(ss$time,log(H0ano2018),type="s",col=5) -->
+
+<!-- legend("bottomright",col=c(5, 4, 3, 2, 1), -->
+<!--        c("2018","2017", "2016", "2015", "2014"),lwd=1,bty="n") -->
+<!-- title("Ano do Óbito") -->
+
+<!-- # Sexo -->
+
+<!-- fitfem<-coxph(Surv(IDADEanos[sexo == "Feminino"], -->
+<!--                    censura_suicidio[sexo == "Feminino"])~1, x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitfem) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0fem<- -log(s0) -->
+<!-- plot(ss$time,log(H0fem), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitmasc<-coxph(Surv(IDADEanos[sexo == "Masculino"], -->
+<!--                     censura_suicidio[sexo == "Masculino"]) ~ 1,  -->
+<!--                x = T, -->
+<!--                      method="breslow") -->
+<!-- ss<- survfit(fitmasc) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0masc<- -log(s0) -->
+<!-- lines(ss$time,log(H0masc),type="s",col=2) -->
+
+<!-- legend("bottomright",col=c(2, 1), -->
+<!--        c("Masculino", "Masculino"),lwd=1,bty="n") -->
+<!-- title("Sexo") -->
+
+<!-- # Raça/Cor -->
+
+<!-- fitamarela<-coxph(Surv(IDADEanos[racacor == "Amarela"], -->
+<!--                        censura_suicidio[racacor == "Amarela"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitamarela) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0amarela<- -log(s0) -->
+<!-- plot(ss$time,log(H0amarela), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitbranca<-coxph(Surv(IDADEanos[racacor == "Branca"], -->
+<!--                        censura_suicidio[racacor == "Branca"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitbranca) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0branca<- -log(s0) -->
+<!-- lines(ss$time,log(H0branca),type="s",col=2) -->
+
+<!-- fitindigena<-coxph(Surv(IDADEanos[racacor == "Indigena"], -->
+<!--                        censura_suicidio[racacor == "Indigena"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitindigena) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0indigena<- -log(s0) -->
+<!-- lines(ss$time,log(H0indigena),type="s",col=3) -->
+
+<!-- fitparda<-coxph(Surv(IDADEanos[racacor == "Parda"], -->
+<!--                        censura_suicidio[racacor == "Parda"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitparda) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0parda<- -log(s0) -->
+<!-- lines(ss$time,log(H0parda),type="s",col=4) -->
+
+<!-- fitpreta<-coxph(Surv(IDADEanos[racacor == "Preta"], -->
+<!--                        censura_suicidio[racacor == "Preta"]) ~ 1,  -->
+<!--                    x = T, -->
+<!--                      method="breslow") -->
+<!-- ss<- survfit(fitpreta) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0preta<- -log(s0) -->
+<!-- lines(ss$time,log(H0preta),type="s",col=5) -->
+
+<!-- legend("bottomright",col=c(5, 4, 3, 2, 1), -->
+<!--        c("Preta", "Parda", "Indigena", "Branca", -->
+<!--          "Amarela"),lwd=1,bty="n") -->
+<!-- title("Raça/Cor") -->
+
+<!-- # Local de Ocorrencia -->
+
+<!-- fitdomicilio<-coxph(Surv(IDADEanos[lococor == "Domicilio"], -->
+<!--                        censura_suicidio[lococor == "Domicilio"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitdomicilio) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0domicilio<- -log(s0) -->
+<!-- plot(ss$time,log(H0domicilio), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitoutros<-coxph(Surv(IDADEanos[lococor == "Outros"], -->
+<!--                        censura_suicidio[lococor == "Outros"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitoutros) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0outros<- -log(s0) -->
+<!-- lines(ss$time,log(H0outros),type="s",col=2) -->
+
+<!-- legend("bottomright",col=c(2, 1), -->
+<!--        c("Outros", "Domicilio"),lwd=1,bty="n") -->
+<!-- title("Local de Ocorrência do Óbito") -->
+
+<!-- # Estado Civil -->
+
+<!-- fitcasado<-coxph(Surv(IDADEanos[estciv == "Casado"], -->
+<!--                        censura_suicidio[estciv == "Casado"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitcasado) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0casado <- -log(s0) -->
+<!-- plot(ss$time,log(H0casado), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitseparado <-coxph(Surv(IDADEanos[estciv == "Separado judicialmente"], -->
+<!--                        censura_suicidio[estciv == "Separado judicialmente"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitseparado) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0separado<- -log(s0) -->
+<!-- lines(ss$time,log(H0separado),type="s",col=2) -->
+
+<!-- fitsolteiro<-coxph(Surv(IDADEanos[estciv == "Solteiro"], -->
+<!--                        censura_suicidio[estciv == "Solteiro"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitsolteiro) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0solteiro <- -log(s0) -->
+<!-- lines(ss$time,log(H0solteiro), type="s",col=3) -->
+
+<!-- fituniao <-coxph(Surv(IDADEanos[estciv == "Uniao consensual"], -->
+<!--                        censura_suicidio[estciv == "Uniao consensual"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fituniao) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0uniao<- -log(s0) -->
+<!-- lines(ss$time,log(H0uniao),type="s",col=4) -->
+
+<!-- fitviuvo <-coxph(Surv(IDADEanos[estciv == "Viuvo"], -->
+<!--                        censura_suicidio[estciv == "Viuvo"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitviuvo) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0viuvo<- -log(s0) -->
+<!-- lines(ss$time,log(H0viuvo),type="s",col=5) -->
+
+<!-- legend("bottomright",col=c(5, 4, 3, 2, 1), -->
+<!--        c("Viuvo", "Uniao consensual", "Solteiro", -->
+<!--          "Separado judicialmente", "Casado"),lwd=1,bty="n") -->
+<!-- title("Estado Civil") -->
+
+<!-- # Regiao -->
+
+<!-- fitco <- coxph(Surv(IDADEanos[regiao == "Centro-Oeste"], -->
+<!--                        censura_suicidio[regiao == "Centro-Oeste"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitco) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0co <- -log(s0) -->
+<!-- plot(ss$time,log(H0co), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitnordeste <- coxph(Surv(IDADEanos[regiao == "Nordeste"], -->
+<!--                        censura_suicidio[regiao == "Nordeste"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitnordeste) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0nordeste<- -log(s0) -->
+<!-- lines(ss$time,log(H0nordeste),type="s",col=2) -->
+
+<!-- fitnorte <- coxph(Surv(IDADEanos[regiao == "Norte"], -->
+<!--                        censura_suicidio[regiao == "Norte"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitnorte) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0norte<- -log(s0) -->
+<!-- lines(ss$time,log(H0norte),type="s",col=3) -->
+
+<!-- legend("bottomright",col=c(3, 2, 1), -->
+<!--        c("Norte", "Nordeste", "Centro-Oeste"),lwd=1,bty="n") -->
+<!-- title("Região") -->
+
+<!-- # Flag Estudante -->
+
+<!-- fitsim <- coxph(Surv(IDADEanos[flag_estudante == "1"], -->
+<!--                        censura_suicidio[flag_estudante == "1"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitsim) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0sim <- -log(s0) -->
+<!-- plot(ss$time,log(H0sim), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitnao <- coxph(Surv(IDADEanos[flag_estudante == "0"], -->
+<!--                        censura_suicidio[flag_estudante == "0"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitnao) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0nao <- -log(s0) -->
+<!-- lines(ss$time,log(H0nao),type="s",col=2) -->
+
+<!-- legend("bottomright",col=c(2, 1), -->
+<!--        c("Não", "Sim"),lwd=1,bty="n") -->
+<!-- title("Estudante") -->
+
+<!-- # Flag Aposentado -->
+
+<!-- fitsim <- coxph(Surv(IDADEanos[flag_aposentado == "1"], -->
+<!--                        censura_suicidio[flag_aposentado == "1"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitsim) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0sim <- -log(s0) -->
+<!-- plot(ss$time,log(H0sim), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitnao <- coxph(Surv(IDADEanos[flag_aposentado == "0"], -->
+<!--                        censura_suicidio[flag_aposentado == "0"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitnao) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0nao <- -log(s0) -->
+<!-- lines(ss$time,log(H0nao),type="s",col=2) -->
+
+<!-- legend("bottomright",col=c(2, 1), -->
+<!--        c("Não", "Sim"),lwd=1,bty="n") -->
+<!-- title("Aposentado") -->
+
+<!-- # Flag São Paulo -->
+
+<!-- fitsim <- coxph(Surv(IDADEanos[flag_sp == "1"], -->
+<!--                        censura_suicidio[flag_sp == "1"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitsim) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0sim <- -log(s0) -->
+<!-- plot(ss$time,log(H0sim), xlim=range(c(0,100)),xlab="Tempos", -->
+<!--      ylab=expression(log(H[0]*(t))),bty="n",type="s") -->
+
+<!-- fitnao <- coxph(Surv(IDADEanos[flag_sp == "0"], -->
+<!--                        censura_suicidio[flag_sp == "0"])~1,  -->
+<!--                   x = T, -->
+<!--                   method="breslow") -->
+<!-- ss<- survfit(fitnao) -->
+<!-- s0<-round(ss$surv,digits=5) -->
+<!-- H0nao <- -log(s0) -->
+<!-- lines(ss$time,log(H0nao),type="s",col=2) -->
+
+<!-- legend("bottomright",col=c(2, 1), -->
+<!--        c("Não", "Sim"),lwd=1,bty="n") -->
+<!-- title("Morador de São Paulo") -->
+
+<!-- ``` -->
+
+
+### Grafico dos residuos Schoenfeld proporcionalidade
+
+```{r, message=F, warning=F, out.width="50%"}
+plot(cox.zph(ajustecox))
+```
+
+## Teste de Proporcionalidade
+
+```{r, message=F, warning=F}
+cox.zph(ajustecox)
+```
+Assumindo o nível de significância de 10%, vemos que as variáveis passam no teste de proporcionalidade
+
+## Gráfico dos resíduos Deviance e Martingal
+
+```{r, message=F, warning=F}
+par(mfrow = c(1,2))
+mart<-resid(ajustecox,type="martingale")
+dev<-resid(ajustecox,type="deviance")
+plot(mart,ylab="res",pch=20) 
+title("Resíduos Martingal")
+plot(dev,ylab="res",pch=20)	 
+title("Resíduos Deviance")
+```
+
+## Grafico do ajuste de Cox
+
+```{r, message=F, warning=F}
+autoplot(survfit(ajustecox)) +
+  labs(y = "S(t) estimada",
+       x = "Idade (anos)",
+       title = "Sobrevivência do ajuste de Cox")
+```
+
+
+# Modelo de Risco Competitivo
+
+Para aplicação deste método é necessário reorganizar o banco de dados e a coluna de censura. Para o banco em estudo todos os individuos morreram, logo nossa censura será toda 1, e iremos criar a coluna de risco competitivo onde cada tipo de morte não natural vai receber um valor como descrito abaixo:
+
+- Suicidio = 1
+- Homicidio = 2
+- Acidente = 3
+- Outro = 0
+
+```{r, message=F, warning=F}
+base_rc = base %>% 
+  mutate(censura_rc = censura_rc %>% factor()) %>% 
+  select(-censura_suicidio)
+base_rc2 = copy(base_rc)
+base_rc3 = copy(base_rc)
+
+summary(base_rc)
+```
+## Sobrevivências
+
+```{r, message=F, warning=F}
+acumulado = cuminc(Surv(IDADEanos, censura_rc) ~ 1, data = base_rc)
+acumulado
+```
+
+## FIA
+
+testar como fica usando um por vez, pq tem muito mais observações a causa 1 (suicidio)
+
+```{r, message=F, warning=F}
+acumulado %>% 
+  ggcuminc(outcome = c("1", "2", "3")) +
+  ylim(c(0, 1)) + 
+  labs(
+    x = "Idade (em anos)",
+    y = "Incidencia Cumulativa"
+  ) + 
+  add_confidence_interval() +
+  add_risktable()
+
+acumulado %>% 
+  ggcuminc(outcome = "1") +
+  ylim(c(0, 1)) + 
+  labs(
+    x = "Idade (em anos)",
+    y = "Incidencia Cumulativa"
+  ) + 
+  add_confidence_interval() +
+  add_risktable()
+
+acumulado %>% 
+  ggcuminc(outcome = "2") +
+  ylim(c(0, 0.0025)) + 
+  labs(
+    x = "Idade (em anos)",
+    y = "Incidencia Cumulativa"
+  ) + 
+  add_confidence_interval() +
+  add_risktable()
+
+acumulado %>% 
+  ggcuminc(outcome = "3") +
+  ylim(c(0, 0.025)) + 
+  labs(
+    x = "Idade (em anos)",
+    y = "Incidencia Cumulativa"
+  ) + 
+  add_confidence_interval() +
+  add_risktable()
+```
+
+<!-- ## Entender melhor o que é -->
+
+<!-- ```{r, message=F, warning=F} -->
+<!-- cuminc(Surv(IDADEanos, censura_rc) ~ ano, -->
+<!--        data = base_rc) %>%  -->
+<!--   tbl_cuminc() %>%  -->
+<!--   add_p() -->
+<!-- ``` -->
+
+## Modelo para suicidio
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(mortenatu) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$regiao[base_rc$regiao == "Sudeste"] = "Centro-Oeste"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$regiao[base_rc$regiao == "Sul"] = "Centro-Oeste"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$ESC2010[base_rc$ESC2010 == "1"] = "0"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$ESC2010[base_rc$ESC2010 == "4"] = "0"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$RACACOR[base_rc$RACACOR == "Preta"] = "Amarela"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$RACACOR[base_rc$RACACOR == "Branca"] = "Amarela"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$RACACOR[base_rc$RACACOR == "Parda"] = "Amarela"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$ESTCIV[base_rc$ESTCIV == "Separado judicialmente"] = "Casado"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$FONTE[base_rc$FONTE == "Família"] = "Boletim de Ocorrência"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$FONTE[base_rc$FONTE == "Outro"] = "Boletim de Ocorrência"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$ESC2010[base_rc$ESC2010 == "5"] = "0"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+```{r, message=F, warning=F}
+base_rc$ESTCIV[base_rc$ESTCIV == "União consensual"] = "Casado"
+
+ajusterc = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc, failcode = 1, conf.level = 0.95)
+
+ajusterc
+```
+
+### Grafico dos residuos Schoenfeld proporcionalidade
+
+```{r, message=F, warning=F, out.width="25%"}
+summary(ajusterc)
+
+for(j in 1:ncol(ajusterc$cmprsk$res))
+scatter.smooth(ajusterc$cmprsk$uftime,
+               ajusterc$cmprsk$res[,j],lpars=list(col='red', lwd=3),
+main = names(ajusterc$coefs)[j],
+xlab = 'Tempo (anos)',
+ylab = 'Resíduos de Schoenfeld')
+```
+
+
+## Modelo para Homicidio
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(regiao), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(regiao) +
+                    factor(ano), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$FONTE[base_rc2$FONTE == "Outro"] = "Boletim de Ocorrência"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ano[base_rc2$ano == "2015"] = "2014"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ESTCIV[base_rc2$ESTCIV == "Separado judicialmente"] = "Casado"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ESC2010[base_rc2$ESC2010 == "5"] = "0"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$tri[base_rc2$tri == "4º Tri"] = "1º Tri"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$tri[base$tri == "3º Tri"] = "1º Tri"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ano[base_rc2$ano == "2016"] = "2014"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ESC2010[base_rc2$ESC2010 == "4"] = "0"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+```{r, message=F, warning=F}
+base_rc2$ano[base$ano == "2017"] = "2014"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ano[base_rc2$ano == "2018"] = "2014"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ano[base_rc2$ano == "2019"] = "2014"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ano[base_rc2$ano == "2020"] = "2014"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$faixa_etaria[base_rc2$faixa_etaria == "20 a 39 anos"] = "15 a 19 anos"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$FONTE[base_rc2$FONTE == "Família"] = "Boletim de Ocorrência"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$faixa_etaria[base_rc2$faixa_etaria == "40 a 59 anos"] = "15 a 19 anos"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$faixa_etaria[base_rc2$faixa_etaria == "60 anos ou mais"] = "15 a 19 anos"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$regiao[base_rc2$regiao == "Nordeste"] = "Centro-Oeste"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ESTCIV[base_rc2$ESTCIV == "Solteiro"] = "Casado"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$ESTCIV[base_rc2$ESTCIV == "Viúvo"] = "Casado"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+```{r, message=F, warning=F}
+base_rc2$RACACOR[base_rc2$RACACOR == "Indígena"] = "Amarela"
+
+ajusterc2 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) + 
+                    factor(ESC2010) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_estudante) +
+                    factor(flag_pb) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc2, failcode = 2, conf.level = 0.95)
+
+ajusterc2
+```
+
+### Grafico dos residuos Schoenfeld proporcionalidade
+
+```{r, message=F, warning=F, out.width="25%"}
+summary(ajusterc2)
+
+for(j in 1:ncol(ajusterc2$cmprsk$res))
+scatter.smooth(ajusterc2$cmprsk$uftime,
+               ajusterc2$cmprsk$res[,j],lpars=list(col='red', lwd=3),
+main = names(ajusterc2$coefs)[j],
+xlab = 'Tempo (anos)',
+ylab = 'Resíduos de Schoenfeld')
+```
+
+
+## Modelo para Acidente
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(SEXO) +
+                    factor(RACACOR) +
+                    factor(ESTCIV), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~ 
+                    factor(RACACOR) +
+                    factor(ESTCIV) +
+                    factor(LOCOCOR), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(mortenatu) +
+                    factor(regiao), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(morteoco) +
+                    factor(regiao), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(ano) +
+                    factor(flag_aposentado), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_aposentado) +
+                    factor(flag_estudante), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_estudante), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_estudante) +
+                    factor(flag_pb), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_pb), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_pb) +
+                    factor(flag_sp), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(tri) +
+                    factor(pandemia), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria) +
+                    factor(pandemia), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$regiao[base_rc3$regiao == "Sul"] = "Centro-Oeste"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$faixa_etaria[base_rc3$faixa_etaria == "60 anos ou mais"] = "15 a 19 anos"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$faixa_etaria[base_rc3$faixa_etaria == "40 a 59 anos"] = "15 a 19 anos"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$ESC2010[base_rc3$ESC2010 == "1"] = "0"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$ESC2010[base_rc3$ESC2010 == "4"] = "0"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$regiao[base_rc3$regiao == "Norte"] = "Centro-Oeste"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$regiao[base_rc3$regiao == "Sudeste"] = "Centro-Oeste"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$ESTCIV[base_rc3$ESTCIV == "Separado judicialmente"] = "Casado"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$ESC2010[base_rc3$ESC2010 == "5"] = "0"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$ESC2010[base_rc3$ESC2010 == "2"] = "0"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$ESC2010[base_rc3$ESC2010 == "9"] = "0"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$ESTCIV[base_rc3$ESTCIV == "Viúvo"] = "Casado"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+base_rc3$ESTCIV[base_rc3$ESTCIV == "Solteiro"] = "Casado"
+
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(ESTCIV) +
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+```{r, message=F, warning=F}
+ajusterc3 = crr(Surv(IDADEanos, censura_rc)~
+                    factor(LOCOCOR) + 
+                    factor(ASSISTMED) +
+                    factor(ESC2010) +
+                    factor(NECROPSIA) +
+                    factor(FONTE) +
+                    factor(regiao) +
+                    factor(flag_sp) +
+                    factor(faixa_etaria), 
+    data = base_rc3, failcode = 3, conf.level = 0.95)
+
+ajusterc3
+```
+
+### Grafico dos residuos Schoenfeld proporcionalidade
+
+```{r, message=F, warning=F, out.width="25%"}
+summary(ajusterc3)
+
+for(j in 1:ncol(ajusterc3$cmprsk$res))
+scatter.smooth(ajusterc3$cmprsk$uftime,
+               ajusterc3$cmprsk$res[,j],lpars=list(col='red', lwd=3),
+main = names(ajusterc3$coefs)[j],
+xlab = 'Tempo (anos)',
+ylab = 'Resíduos de Schoenfeld')
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
